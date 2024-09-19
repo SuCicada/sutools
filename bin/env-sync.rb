@@ -69,15 +69,15 @@ def check_env_files
     s3_cmd_prefix = "aws s3api head-object --bucket #{S3_BUCKET} --key etc/project/#{PROJECT}/env/#{File.basename(file)}"
     s3_md5 = `#{s3_cmd_prefix} --query ETag --output text`.gsub('"', '').strip
     if local_md5 == s3_md5
-      puts "\e[32m#{file} :is up to date\e[0m"  # Green text
+      puts "\e[32m#{file} => is up to date\e[0m"  # Green text
     else
 
       local_time = File.mtime(file)
       s3_time = `#{s3_cmd_prefix} --query LastModified --output text`.strip
       if local_time > Time.parse(s3_time)
-        puts "\e[33m#{file} :is newer\e[0m"  # Yellow text
+        puts "\e[33m#{file} => is newer\e[0m"  # Yellow text
       else
-        puts "\e[31m#{file} :is outdated\e[0m"  # Red text
+        puts "\e[31m#{file} => is outdated\e[0m"  # Red text
       end
     end
   end
@@ -85,12 +85,22 @@ end
 
 
 action = ARGV[0]
+# STDIN.flush
+
 puts "ARGV #{ARGV}"
+ARGV.clear  #Ruby 在处理命令行参数时，将 ARGV 中的内容解释为文件输入，因为在调用 gets 时，没有指定标准输入。
+
 case action
 when "upload"
   upload_env_files
 when "download"
-  download_env_files
+  # check_env_files
+  puts "Are you sure to download env files? (y/n)"
+  input = gets.chomp
+  puts "input: #{input}"
+  if input.downcase == "y"
+    download_env_files
+  end
 when "check"
   check_env_files
 else
