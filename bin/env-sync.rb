@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require "open3"
 require 'time'
+require 'optparse'
 
 # 1. get project name
 # 1. get env file from local dir
@@ -69,42 +70,63 @@ def check_env_files
     s3_cmd_prefix = "aws s3api head-object --bucket #{S3_BUCKET} --key etc/project/#{PROJECT}/env/#{File.basename(file)}"
     s3_md5 = `#{s3_cmd_prefix} --query ETag --output text`.gsub('"', '').strip
     if local_md5 == s3_md5
-      puts "\e[32m#{file} => is up to date\e[0m"  # Green text
+      puts "\e[32m#{file} => is up to date\e[0m" # Green text
     else
 
       local_time = File.mtime(file)
       s3_time = `#{s3_cmd_prefix} --query LastModified --output text`.strip
       if local_time > Time.parse(s3_time)
-        puts "\e[33m#{file} => is newer\e[0m"  # Yellow text
+        puts "\e[33m#{file} => is newer\e[0m" # Yellow text
       else
-        puts "\e[31m#{file} => is outdated\e[0m"  # Red text
+        puts "\e[31m#{file} => is outdated\e[0m" # Red text
       end
     end
   end
 end
 
-
-action = ARGV[0]
+# action = ARGV[0]
 # STDIN.flush
 
 puts "ARGV #{ARGV}"
-ARGV.clear  #Ruby 在处理命令行参数时，将 ARGV 中的内容解释为文件输入，因为在调用 gets 时，没有指定标准输入。
+options = {
+  yes: false, # 默认情况下，不自动回答 yes
+  action: nil # 将要执行的命令（upload、download、check）
+}
 
-case action
+# 定义命令行解析器
+OptionParser.new do |opts|
+  opts.banner = "Usage: env-sync.rb [upload|download|check]"
+  # 定义 -y 或 --yes 选项
+  opts.on("-y", "--yes", "Answer yes to all questions") do
+    options[:yes] = true
+  end
+end.parse!
+
+# 提取命令
+options[:action] = ARGV.shift
+ARGV.clear # Ruby 在处理命令行参数时，将 ARGV 中的内容解释为文件输入，因为在调用 gets 时，没有指定标准输入。
+
+case options[:action]
 when "upload"
   upload_env_files
 when "download"
   # check_env_files
-  puts "Are you sure to download env files? (y/n)"
-  input = gets.chomp
-  puts "input: #{input}"
-  if input.downcase == "y"
+  if options[:yes]
     download_env_files
+  else
+    puts "Are you sure to download env files? (y/n)"
+    input = gets.chomp
+    puts "input: #{input}"
+    if input.downcase == "y"
+      download_env_files
+    end
   end
 when "check"
   check_env_files
 else
-  puts "Usage: env-sync.rb [upload|download|check]"
+  puts "Usage: env-sync.rb [upload|download|check]
+  -y, --yes    # answer yes to all questions
+"
   exit 1
 end
 

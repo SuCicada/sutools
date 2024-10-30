@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require_relative "../config/const"
+
+# 定义命令行解析器
+OptionParser.new do |opts|
+  opts.banner = "Usage: sutools [update]"
+  # 定义 -y 或 --yes 选项
+end.parse!
+action = ARGV.shift
+
+case action
+when "update" then
+  puts "Updating repository.. #{PROJECT_DIR}"
+  Dir.chdir(PROJECT_DIR) do
+    if system("git pull")
+      puts "Repository updated successfully."
+    else
+      puts "Failed to update repository."
+      exit 1
+    end
+  end
+else
+  puts "Usage: sutools [update]"
+end
+
