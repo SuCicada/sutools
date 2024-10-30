@@ -18,18 +18,29 @@ def get_repo_name
 end
 
 S3_BUCKET = ENV["S3_BUCKET"]
-
+def system_echo(cmd)
+  puts cmd
+  system(cmd)
+end
 def upload_to_s3(project, file)
   s3_path = "#{S3_BUCKET}/etc/project/#{project}/env/#{File.basename(file)}"
-  `aws s3 cp #{file} s3://#{s3_path}`
-
-  puts "Uploaded #{file} to #{s3_path}"
+  if system_echo("aws s3 cp #{file} s3://#{s3_path}")
+    puts "Uploaded #{file} to #{s3_path}"
+  else
+    puts "Failed to upload #{file} to #{s3_path}: #{$?}"
+    exit 1
+  end
 end
 
 def download_from_s3(project)
+  puts "project name: #{PROJECT}"
   s3_path = "#{S3_BUCKET}/etc/project/#{project}/env/"
-  `aws s3 cp s3://#{s3_path} . --recursive`
-  puts "Download   to #{s3_path}"
+  if system_echo("aws s3 cp s3://#{s3_path} . --recursive")
+    # puts "Downloaded from #{s3_path}"
+  else
+    puts "Failed to download from #{s3_path}: #{$?}"
+    exit 1
+  end
 end
 
 def get_local_env_files
