@@ -3,7 +3,9 @@
 # 1. check current shell, then add "source  $home/.sutools/profile" if not exist
 
 require "fileutils"
-require_relative "./config/const"
+
+HOME_DIR = ENV["HOME"]
+PROJECT_DIR = File.join(HOME_DIR, ".sutools")
 
 def clone_project
   repo_url = "https://github.com/SuCicada/sutools.git"
