@@ -25,7 +25,7 @@ end
 def upload_to_s3(project, file)
   s3_path = "#{S3_BUCKET}/etc/project/#{project}/env/#{File.basename(file)}"
   if system_echo("aws s3 cp #{file} s3://#{s3_path}")
-    puts "Uploaded #{file} to #{s3_path}"
+    # puts "Uploaded #{file} to #{s3_path}"
   else
     puts "Failed to upload #{file} to #{s3_path}: #{$?}"
     exit 1
@@ -79,7 +79,15 @@ def check_env_files
   env_files.each do |file|
     local_md5 = `md5 -q #{file}`.strip
     s3_cmd_prefix = "aws s3api head-object --bucket #{S3_BUCKET} --key etc/project/#{PROJECT}/env/#{File.basename(file)}"
-    s3_md5 = `#{s3_cmd_prefix} --query ETag --output text`.gsub('"', '').strip
+    
+    s3_md5, status = Open3.capture2e("#{s3_cmd_prefix} --query ETag --output text")
+    if status.success?
+      s3_md5 = s3_md5.gsub('"', '').strip
+    else
+      puts "\e[31m#{file} => Failed to get S3 ETag: #{status}\e[0m"
+      next
+    end
+
     if local_md5 == s3_md5
       puts "\e[32m#{file} => is up to date\e[0m" # Green text
     else
