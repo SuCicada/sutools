@@ -44,7 +44,7 @@ def download_from_s3(project)
 end
 
 def get_local_env_files
-  Dir.glob(".env.*")
+  Dir.glob([".env", ".env.*"]) # Match only .env and .env.*
 end
 
 PROJECT = get_repo_name
