@@ -52,6 +52,12 @@ def update_shell_profile(profile_file)
   end
 end
 
+def install_lib()
+  `#{PROJECT_DIR}/bin/sutools update`
+end
+
 clone_project
 update_shell_profile(get_profile)
+install_lib()
 # update_shell_profile(File.join(HOME_DIR, ".profile"))
+# 

@@ -1,2 +1,4 @@
-gem 'aws-sdk-s3', '~> 1'
+source "https://rubygems.org"
+
+gem 'aws-sdk-s3'
 gem 'dotenv'
