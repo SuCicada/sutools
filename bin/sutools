@@ -21,6 +21,13 @@ when "update" then
     end
   end
 else
+  version = ""
+  Dir.chdir(PROJECT_DIR) do
+    date = `git log -1 --date=format:'%Y-%m-%d %H:%M:%S' --format="%cd"`.strip
+    hash = `git log -1 --format=%h`.strip
+    version = "[#{hash}] #{date} "
+  end
+  puts "Version: #{version}"
   puts "Usage: sutools [update]"
 end
 
