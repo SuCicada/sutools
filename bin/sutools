@@ -9,6 +9,13 @@ OptionParser.new do |opts|
 end.parse!
 action = ARGV.shift
 
+def install_lib()
+  Dir.chdir(PROJECT_DIR) do
+    `bundle install`
+  end
+end
+
+
 case action
 when "update" then
   puts "Updating repository.. #{PROJECT_DIR}"
@@ -19,6 +26,7 @@ when "update" then
       puts "Failed to update repository."
       exit 1
     end
+    install_lib()
   end
 else
   version = ""
