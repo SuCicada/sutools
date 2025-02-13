@@ -2,46 +2,21 @@
 require "open3"
 require 'time'
 require 'optparse'
+require_relative '../utils/git'
+require_relative '../utils/file'
+require 'dotenv'
 
 # 1. get project name
 # 1. get env file from local dir
 # 2. upload to sucicada/etc/project/{project}/env/
 # 3. download from sucicada/etc/project/{project}/env/
-def get_repo_name
-  repo_url = `git config --get remote.origin.url`
-  if repo_url.empty?
-    puts "No remote origin found"
-    exit 1
-  end
-  repo_name = repo_url.split("/").last.gsub(".git", "").strip
-  repo_name
-end
 
 S3_BUCKET = ENV["S3_BUCKET"]
 def system_echo(cmd)
   puts cmd
   system(cmd)
 end
-def upload_to_s3(project, file)
-  s3_path = "#{S3_BUCKET}/etc/project/#{project}/env/#{File.basename(file)}"
-  if system_echo("aws s3 cp #{file} s3://#{s3_path}")
-    # puts "Uploaded #{file} to #{s3_path}"
-  else
-    puts "Failed to upload #{file} to #{s3_path}: #{$?}"
-    exit 1
-  end
-end
 
-def download_from_s3(project)
-  puts "project name: #{PROJECT}"
-  s3_path = "#{S3_BUCKET}/etc/project/#{project}/env/"
-  if system_echo("aws s3 cp s3://#{s3_path} . --recursive")
-    # puts "Downloaded from #{s3_path}"
-  else
-    puts "Failed to download from #{s3_path}: #{$?}"
-    exit 1
-  end
-end
 
 def get_local_env_files
   Dir.glob([".env", ".env.*"]) # Match only .env and .env.*
@@ -54,16 +29,38 @@ def upload_env_files
   puts "project name: #{PROJECT}"
   puts "env files: #{env_files}"
   env_files.each do |file|
-    upload_to_s3(PROJECT, file)
+    s3_path = "#{S3_BUCKET}/etc/project/#{PROJECT}/env/#{File.basename(file)}"
+    upload_to_s3(file, s3_path)
   end
 
+  # sync other files
+  get_env_sync_files.each do |file|
+      s3_path = "#{S3_BUCKET}/etc/project/#{PROJECT}/#{file}"
+      upload_to_s3(file, s3_path)
+  end
   # env_files.each do |file|
   #   download_from_s3(project, File.basename(file))
   # end
 end
 
+def get_env_sync_files
+  if File.exist?(".env") 
+    Dotenv.load(".env")
+    env_sync_files = ENV["env_sync_files"].strip
+    env_sync_files.split("\n").map(&:strip)
+  else
+    []
+  end
+end
+
 def download_env_files
-  download_from_s3(PROJECT)
+  s3_path = "#{S3_BUCKET}/etc/project/#{PROJECT}/env/"
+  download_from_s3(s3_path, '.')
+
+  get_env_sync_files.each do |file|
+    s3_path = "#{S3_BUCKET}/etc/project/#{PROJECT}/#{file}"
+    download_from_s3(s3_path, '.')
+  end
 end
 
 if PROJECT.empty?
@@ -75,10 +72,14 @@ end
 1. add action "check": calc md5 of local and s3 files
 =end
 def check_env_files
-  env_files = get_local_env_files
-  env_files.each do |file|
+  env_files = get_local_env_files.map {|file| {file:file,path:"etc/project/#{PROJECT}/env/#{File.basename(file)}"}}
+  env_sync_files = get_env_sync_files.map { |file| {file: file, path: "etc/project/#{PROJECT}/#{file}"} }
+  files = env_files + env_sync_files
+  files.each do |map|
+    file = map[:file]
+    path = map[:path]
     local_md5 = `md5 -q #{file}`.strip
-    s3_cmd_prefix = "aws s3api head-object --bucket #{S3_BUCKET} --key etc/project/#{PROJECT}/env/#{File.basename(file)}"
+    s3_cmd_prefix = "aws s3api head-object --bucket #{S3_BUCKET} --key #{path}"
     
     s3_md5, status = Open3.capture2e("#{s3_cmd_prefix} --query ETag --output text")
     if status.success?
@@ -128,6 +129,7 @@ ARGV.clear # Ruby 在处理命令行参数时，将 ARGV 中的内容解释为�
 case options[:action]
 when "upload"
   upload_env_files
+
 when "download"
   # check_env_files
   if options[:yes]
@@ -145,6 +147,8 @@ when "check"
 else
   puts "Usage: env-sync.rb [upload|download|check]
   -y, --yes    # answer yes to all questions
+  # .env
+  env_sync_files=\"xxxxxx\"  # allow multi line files 
 "
   exit 1
 end
