@@ -54,7 +54,7 @@ end
 
 def install_lib()
   `#{PROJECT_DIR}/bin/sutools update`
-  `bundle install`
+  `cd #{PROJECT_DIR} && bundle install`
 end
 
 clone_project
