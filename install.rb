@@ -54,7 +54,6 @@ end
 
 def install_lib()
   `#{PROJECT_DIR}/bin/sutools update`
-  `gem install bundler`
   `cd #{PROJECT_DIR} && bundle install`
 end
 
